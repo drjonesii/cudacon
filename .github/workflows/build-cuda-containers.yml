@@ -167,7 +167,6 @@ jobs:
           files: |
             README.md
             LICENSE
-            trivy-results-${{ matrix.cuda_version }}.sarif
           body: |
             CUDA ${{ matrix.cuda_version }} container image for RHEL ${{ github.event_name == 'workflow_dispatch' && inputs.rhel_version || env.DEFAULT_RHEL_VERSION }}
             
@@ -176,4 +175,4 @@ jobs:
             - `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:cuda${{ matrix.cuda_version }}-rhel${{ github.event_name == 'workflow_dispatch' && inputs.rhel_version || env.DEFAULT_RHEL_VERSION }}`
             
             ### Security Scan Results
-            The security scan results are attached to this release. Please review them for any potential vulnerabilities. 
+            Security scan results have been uploaded to the GitHub Security tab. Please review them for any potential vulnerabilities. 
