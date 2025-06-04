@@ -86,19 +86,33 @@ jobs:
 
     strategy:
       matrix:
-        include:
-          - cuda_version: "12.3.1"
-          - cuda_version: "12.2.2"
-          - cuda_version: "12.1.1"
-          - cuda_version: "11.8.0"
+        cuda:
+          - version: "12.3.1"
+          - version: "12.2.2"
+          - version: "12.1.1"
+          - version: "11.8.0"
         exclude:
-          - cuda_version: ${{ github.event_name != 'workflow_dispatch' && '12.2.2' || '' }}
-          - cuda_version: ${{ github.event_name != 'workflow_dispatch' && '12.1.1' || '' }}
-          - cuda_version: ${{ github.event_name != 'workflow_dispatch' && '11.8.0' || '' }}
-          - cuda_version: ${{ github.event_name == 'workflow_dispatch' && inputs.cuda_version != '12.3.1' && '12.3.1' || '' }}
-          - cuda_version: ${{ github.event_name == 'workflow_dispatch' && inputs.cuda_version != '12.2.2' && '12.2.2' || '' }}
-          - cuda_version: ${{ github.event_name == 'workflow_dispatch' && inputs.cuda_version != '12.1.1' && '12.1.1' || '' }}
-          - cuda_version: ${{ github.event_name == 'workflow_dispatch' && inputs.cuda_version != '11.8.0' && '11.8.0' || '' }}
+          - cuda:
+              version: "12.2.2"
+            condition: ${{ github.event_name != 'workflow_dispatch' }}
+          - cuda:
+              version: "12.1.1"
+            condition: ${{ github.event_name != 'workflow_dispatch' }}
+          - cuda:
+              version: "11.8.0"
+            condition: ${{ github.event_name != 'workflow_dispatch' }}
+          - cuda:
+              version: "12.3.1"
+            condition: ${{ github.event_name == 'workflow_dispatch' && inputs.cuda_version != '12.3.1' }}
+          - cuda:
+              version: "12.2.2"
+            condition: ${{ github.event_name == 'workflow_dispatch' && inputs.cuda_version != '12.2.2' }}
+          - cuda:
+              version: "12.1.1"
+            condition: ${{ github.event_name == 'workflow_dispatch' && inputs.cuda_version != '12.1.1' }}
+          - cuda:
+              version: "11.8.0"
+            condition: ${{ github.event_name == 'workflow_dispatch' && inputs.cuda_version != '11.8.0' }}
 
     steps:
       - name: Checkout repository
@@ -120,11 +134,11 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=raw,value=cuda${{ matrix.cuda_version }}
-            type=raw,value=cuda${{ matrix.cuda_version }}-rhel${{ github.event_name == 'workflow_dispatch' && inputs.rhel_version || env.DEFAULT_RHEL_VERSION }}
-            type=semver,pattern={{version}}-cuda${{ matrix.cuda_version }}
-            type=semver,pattern={{version}}-cuda${{ matrix.cuda_version }}-rhel${{ github.event_name == 'workflow_dispatch' && inputs.rhel_version || env.DEFAULT_RHEL_VERSION }}
-            type=sha,prefix=cuda${{ matrix.cuda_version }}-
+            type=raw,value=cuda${{ matrix.cuda.version }}
+            type=raw,value=cuda${{ matrix.cuda.version }}-rhel${{ github.event_name == 'workflow_dispatch' && inputs.rhel_version || env.DEFAULT_RHEL_VERSION }}
+            type=semver,pattern={{version}}-cuda${{ matrix.cuda.version }}
+            type=semver,pattern={{version}}-cuda${{ matrix.cuda.version }}-rhel${{ github.event_name == 'workflow_dispatch' && inputs.rhel_version || env.DEFAULT_RHEL_VERSION }}
+            type=sha,prefix=cuda${{ matrix.cuda.version }}-
 
       - name: Build container for scanning
         uses: docker/build-push-action@v5
@@ -132,17 +146,17 @@ jobs:
           context: .
           file: ./Dockerfile
           load: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:scan-${{ matrix.cuda_version }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:scan-${{ matrix.cuda.version }}
           build-args: |
-            CUDA_VERSION=${{ matrix.cuda_version }}
+            CUDA_VERSION=${{ matrix.cuda.version }}
             RHEL_VERSION=${{ github.event_name == 'workflow_dispatch' && inputs.rhel_version || env.DEFAULT_RHEL_VERSION }}
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:scan-${{ matrix.cuda_version }}
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:scan-${{ matrix.cuda.version }}
           format: 'sarif'
-          output: 'trivy-results-${{ matrix.cuda_version }}.sarif'
+          output: 'trivy-results-${{ matrix.cuda.version }}.sarif'
           severity: 'CRITICAL,HIGH'
           ignore-unfixed: true
 
@@ -150,7 +164,7 @@ jobs:
         uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
-          sarif_file: 'trivy-results-${{ matrix.cuda_version }}.sarif'
+          sarif_file: 'trivy-results-${{ matrix.cuda.version }}.sarif'
           category: trivy-container
 
       - name: Build and push final container
@@ -164,7 +178,7 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            CUDA_VERSION=${{ matrix.cuda_version }}
+            CUDA_VERSION=${{ matrix.cuda.version }}
             RHEL_VERSION=${{ github.event_name == 'workflow_dispatch' && inputs.rhel_version || env.DEFAULT_RHEL_VERSION }}
 
       - name: Create Release
@@ -175,11 +189,11 @@ jobs:
             README.md
             LICENSE
           body: |
-            CUDA ${{ matrix.cuda_version }} container image for RHEL ${{ github.event_name == 'workflow_dispatch' && inputs.rhel_version || env.DEFAULT_RHEL_VERSION }}
+            CUDA ${{ matrix.cuda.version }} container image for RHEL ${{ github.event_name == 'workflow_dispatch' && inputs.rhel_version || env.DEFAULT_RHEL_VERSION }}
             
             Container images:
-            - `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:cuda${{ matrix.cuda_version }}`
-            - `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:cuda${{ matrix.cuda_version }}-rhel${{ github.event_name == 'workflow_dispatch' && inputs.rhel_version || env.DEFAULT_RHEL_VERSION }}`
+            - `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:cuda${{ matrix.cuda.version }}`
+            - `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:cuda${{ matrix.cuda.version }}-rhel${{ github.event_name == 'workflow_dispatch' && inputs.rhel_version || env.DEFAULT_RHEL_VERSION }}`
             
             ### Security Scan Results
             Security scan results have been uploaded to the GitHub Security tab. Please review them for any potential vulnerabilities. 
