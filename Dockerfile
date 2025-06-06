@@ -10,21 +10,23 @@ ARG CUDA_MAJOR_VERSION=${CUDA_VERSION%.*.*}
 RUN dnf -y update && \
     dnf -y upgrade && \
     dnf -y install \
-    dnf-plugins-core \
-    epel-release \
-    wget \
-    which \
-    python3.11 \
-    python3.11-pip \
-    python3.11-devel \
-    gcc \
-    gcc-c++ \
-    make \
-    git \
-    numactl \
-    libnuma-devel \
-    hwloc \
-    hwloc-devel \
+        dnf-plugins-core \
+        https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm && \
+    dnf config-manager --set-enabled crb && \
+    dnf -y install \
+        wget \
+        which \
+        python3.11 \
+        python3.11-pip \
+        python3.11-devel \
+        gcc \
+        gcc-c++ \
+        make \
+        git \
+        numactl \
+        libnuma-devel \
+        hwloc \
+        hwloc-devel \
     && dnf clean all \
     && rm -rf /var/cache/dnf/*
 
